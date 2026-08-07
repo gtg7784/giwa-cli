@@ -1,8 +1,10 @@
 #!/usr/bin/env bun
 
 import { Command, CommanderError } from "commander";
+import { registerDoctorCommand } from "./doctor-command.js";
 import { ApplicationError, EXIT_CODES, toApplicationError } from "./errors.js";
 import { parseGlobalOptions } from "./global-options.js";
+import { registerInitCommand } from "./init-command.js";
 import { type CommandIO, registerNetworkCommand } from "./network-commands.js";
 import { formatError, formatSuccess, writeOutput } from "./output.js";
 import { createRegistry } from "./registry.js";
@@ -51,6 +53,8 @@ export async function runCLI(
 
   try {
     registerNetworkCommand(program, { io, getRegistry });
+    registerInitCommand(program, { io, getRegistry });
+    registerDoctorCommand(program, { io, getRegistry });
     program.action(() => {
       const options = parseGlobalOptions(program.opts());
       if (argv.slice(2).length === 0) {
