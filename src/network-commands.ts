@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { parseGlobalOptions } from "./global-options.js";
+import { formatHealthHuman, healthCommand } from "./network-health-command.js";
 import { registerNetworkWriteCommands } from "./network-write-commands.js";
 import type { Network } from "./networks.js";
 import { type OutputOptions, type OutputWriter, formatSuccess, writeOutput } from "./output.js";
@@ -125,6 +126,22 @@ export function registerNetworkCommand(program: Command, context: NetworkCommand
       writeOutput(
         context.io.stdout,
         formatSuccess(item, formatNetworkInfo(item), outputOptions(program)),
+      );
+    });
+
+  networkCommand
+    .command("health [alias]")
+    .description("Check network health")
+    .allowExcessArguments(false)
+    .action(async (alias?: string) => {
+      const registry = context.getRegistry();
+      const activeNetwork = registry.getActiveNetwork();
+      const network = registry.resolveNetwork(alias ?? activeNetwork.alias);
+      const globalOptions = parseGlobalOptions(program.opts());
+      const data = await healthCommand(network, globalOptions);
+      writeOutput(
+        context.io.stdout,
+        formatSuccess(data, formatHealthHuman(data), outputOptions(program)),
       );
     });
 

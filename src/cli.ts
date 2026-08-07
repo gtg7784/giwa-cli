@@ -33,11 +33,11 @@ function commandError(error: CommanderError): ApplicationError {
   return new ApplicationError("CLI_USAGE", error.message, EXIT_CODES.usage);
 }
 
-export function runCLI(
+export async function runCLI(
   argv: string[],
   io: CommandIO,
   registryFactory: () => Registry = createRegistry,
-): number {
+): Promise<number> {
   const program = createProgram();
   let registry: Registry | undefined;
   const getRegistry = (): Registry => {
@@ -65,7 +65,7 @@ export function runCLI(
         }),
       );
     });
-    program.parse(argv);
+    await program.parseAsync(argv);
     return EXIT_CODES.success;
   } catch (error) {
     if (
@@ -83,7 +83,7 @@ export function runCLI(
 }
 
 if (import.meta.main) {
-  process.exitCode = runCLI(process.argv, {
+  process.exitCode = await runCLI(process.argv, {
     stdout: process.stdout,
     stderr: process.stderr,
   });
