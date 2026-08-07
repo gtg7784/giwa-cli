@@ -3,14 +3,12 @@
 import { Command, CommanderError } from "commander";
 import { ApplicationError, EXIT_CODES, toApplicationError } from "./errors.js";
 import { parseGlobalOptions } from "./global-options.js";
-import { type OutputWriter, formatError, formatSuccess, writeOutput } from "./output.js";
+import { type CommandIO, registerNetworkCommand } from "./network-commands.js";
+import { formatError, formatSuccess, writeOutput } from "./output.js";
+import { createRegistry } from "./registry.js";
+import type { Registry } from "./registry.js";
 
 const version = "0.1.0";
-
-export interface CLIIO {
-  stdout: OutputWriter;
-  stderr: OutputWriter;
-}
 
 export function createProgram(): Command {
   return new Command()
@@ -35,22 +33,39 @@ function commandError(error: CommanderError): ApplicationError {
   return new ApplicationError("CLI_USAGE", error.message, EXIT_CODES.usage);
 }
 
-export function runCLI(argv: string[], io: CLIIO): number {
+export function runCLI(
+  argv: string[],
+  io: CommandIO,
+  registryFactory: () => Registry = createRegistry,
+): number {
   const program = createProgram();
-  try {
-    program.parse(argv);
-    const options = parseGlobalOptions(program.opts());
-
-    if (argv.slice(2).length === 0) {
-      program.outputHelp();
-      return EXIT_CODES.success;
+  let registry: Registry | undefined;
+  const getRegistry = (): Registry => {
+    if (registry !== undefined) {
+      return registry;
     }
+    const created = registryFactory();
+    registry = created;
+    return created;
+  };
 
-    const output = formatSuccess({ status: "ready" }, "GIWA CLI ready", {
-      json: options.json,
-      quiet: options.quiet,
+  try {
+    registerNetworkCommand(program, { io, getRegistry });
+    program.action(() => {
+      const options = parseGlobalOptions(program.opts());
+      if (argv.slice(2).length === 0) {
+        program.outputHelp();
+        return;
+      }
+      writeOutput(
+        io.stdout,
+        formatSuccess({ status: "ready" }, "GIWA CLI ready", {
+          json: options.json,
+          quiet: options.quiet,
+        }),
+      );
     });
-    writeOutput(io.stdout, output);
+    program.parse(argv);
     return EXIT_CODES.success;
   } catch (error) {
     if (
