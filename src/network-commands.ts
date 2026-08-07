@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { parseGlobalOptions } from "./global-options.js";
+import { registerNetworkWriteCommands } from "./network-write-commands.js";
 import type { Network } from "./networks.js";
 import { type OutputOptions, type OutputWriter, formatSuccess, writeOutput } from "./output.js";
 import type { Registry } from "./registry.js";
@@ -14,7 +15,7 @@ export interface NetworkCommandContext {
   getRegistry(): Registry;
 }
 
-interface NetworkListItem {
+export interface NetworkListItem {
   readonly alias: string;
   readonly name: string;
   readonly chainId: number;
@@ -33,7 +34,7 @@ interface NetworkListData {
   readonly networks: readonly NetworkListItem[];
 }
 
-function createNetworkListItem(network: Network, activeAlias: string): NetworkListItem {
+export function createNetworkListItem(network: Network, activeAlias: string): NetworkListItem {
   return {
     alias: network.alias,
     name: network.name,
@@ -56,10 +57,10 @@ function outputOptions(program: Command): OutputOptions {
 
 function formatNetworkList(data: NetworkListData): string {
   return data.networks
-    .map((network) => {
-      const marker = network.active ? "*" : " ";
-      return `${marker} ${network.alias.padEnd(20)} ${String(network.chainId).padEnd(10)} ${network.name}`;
-    })
+    .map(
+      (network) =>
+        `${network.active ? "*" : " "} ${network.alias.padEnd(20)} ${String(network.chainId).padEnd(10)} ${network.name}`,
+    )
     .join("\n");
 }
 
@@ -127,5 +128,6 @@ export function registerNetworkCommand(program: Command, context: NetworkCommand
       );
     });
 
+  registerNetworkWriteCommands(networkCommand, program, context, createNetworkListItem);
   program.addCommand(networkCommand);
 }
