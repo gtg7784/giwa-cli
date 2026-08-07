@@ -1,0 +1,32 @@
+{
+  "name": "giwa",
+  "version": "0.1.0",
+  "description": "GIWA OP Stack L2 developer CLI",
+  "type": "module",
+  "bin": {
+    "giwa": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "check": "biome check .",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "test": "bun test"
+  },
+  "keywords": ["giwa", "ethereum", "op-stack", "cli"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0",
+    "viem": "^2.21.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.8.0",
+    "@types/node": "^26.1.2",
+    "bun-types": "latest",
+    "typescript": "^5.6.0"
+  },
+  "packageManager": "pnpm@11.20.0"
+}
