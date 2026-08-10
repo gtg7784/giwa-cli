@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { Command, CommanderError } from "commander";
+import { registerCreateCommand } from "./create-commands.js";
 import { registerDoctorCommand } from "./doctor-command.js";
 import { ApplicationError, EXIT_CODES, toApplicationError } from "./errors.js";
 import { parseGlobalOptions } from "./global-options.js";
@@ -55,6 +56,7 @@ export async function runCLI(
     registerNetworkCommand(program, { io, getRegistry });
     registerInitCommand(program, { io, getRegistry });
     registerDoctorCommand(program, { io, getRegistry });
+    registerCreateCommand(program, { io, getRegistry });
     program.action(() => {
       const options = parseGlobalOptions(program.opts());
       if (argv.slice(2).length === 0) {
