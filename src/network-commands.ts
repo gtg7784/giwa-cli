@@ -1,10 +1,18 @@
 import { Command } from "commander";
+import { z } from "zod";
 import { parseGlobalOptions } from "./global-options.js";
+import {
+  NETWORK_EXPORT_FORMATS,
+  type NetworkExportFormat,
+  exportNetwork,
+} from "./network-export-command.js";
 import { formatHealthHuman, healthCommand } from "./network-health-command.js";
 import { registerNetworkWriteCommands } from "./network-write-commands.js";
 import type { Network } from "./networks.js";
 import { type OutputOptions, type OutputWriter, formatSuccess, writeOutput } from "./output.js";
 import type { Registry } from "./registry.js";
+
+const NetworkExportFormatSchema = z.enum(NETWORK_EXPORT_FORMATS);
 
 export interface CommandIO {
   readonly stdout: OutputWriter;
@@ -27,6 +35,7 @@ export interface NetworkListItem {
   readonly active: boolean;
   readonly portal?: string;
   readonly l1StandardBridge?: string;
+  readonly disputeGameFactory?: string;
   readonly sourceId?: number;
 }
 
@@ -47,6 +56,9 @@ export function createNetworkListItem(network: Network, activeAlias: string): Ne
     active: network.alias === activeAlias,
     ...(network.portal !== undefined && { portal: network.portal }),
     ...(network.l1StandardBridge !== undefined && { l1StandardBridge: network.l1StandardBridge }),
+    ...(network.disputeGameFactory !== undefined && {
+      disputeGameFactory: network.disputeGameFactory,
+    }),
     ...(network.sourceId !== undefined && { sourceId: network.sourceId }),
   };
 }
@@ -81,6 +93,9 @@ function formatNetworkInfo(network: NetworkListItem): string {
   if (network.l1StandardBridge !== undefined) {
     lines.push(`L1 Bridge:   ${network.l1StandardBridge}`);
   }
+  if (network.disputeGameFactory !== undefined) {
+    lines.push(`Game Factory:${network.disputeGameFactory}`);
+  }
   if (network.sourceId !== undefined) {
     lines.push(`Source ID:   ${network.sourceId}`);
   }
@@ -111,6 +126,27 @@ export function registerNetworkCommand(program: Command, context: NetworkCommand
       writeOutput(
         context.io.stdout,
         formatSuccess(data, formatNetworkList(data), outputOptions(program)),
+      );
+    });
+
+  networkCommand
+    .command("export [alias]")
+    .description("Export network configuration for shell or Foundry")
+    .option("--format <format>", "env or foundry", "env")
+    .allowExcessArguments(false)
+    .action((alias: string | undefined, options: { readonly format: string }) => {
+      const registry = context.getRegistry();
+      const activeNetwork = registry.getActiveNetwork();
+      const network = registry.resolveNetwork(alias ?? activeNetwork.alias);
+      const format: NetworkExportFormat = NetworkExportFormatSchema.parse(options.format);
+      const content = exportNetwork(network, format);
+      writeOutput(
+        context.io.stdout,
+        formatSuccess(
+          { alias: network.alias, format, content },
+          content.trimEnd(),
+          outputOptions(program),
+        ),
       );
     });
 
