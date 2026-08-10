@@ -1,14 +1,27 @@
-import { http, type Hash, createPublicClient, createWalletClient } from "viem";
+import {
+  http,
+  type Hash,
+  TransactionReceiptNotFoundError,
+  createPublicClient,
+  createWalletClient,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import {
   buildProveWithdrawal,
   finalizeWithdrawal,
+  getL2TransactionHashes,
   getWithdrawalStatus,
   getWithdrawals,
   proveWithdrawal,
   waitToProve,
 } from "viem/op-stack";
-import type { BridgeAdapter, BridgeWaitTarget, WithdrawalStatus } from "./bridge-command.js";
+import type {
+  BridgeAdapter,
+  BridgeWaitTarget,
+  DepositL2Status,
+  DepositStatusSnapshot,
+  WithdrawalStatus,
+} from "./bridge-command.js";
 import { bridgeError, parseBridgePrivateKey, resolveBridgeNetworks } from "./bridge-context.js";
 import { ApplicationError, EXIT_CODES } from "./errors.js";
 import { toViemBridgeChain, toViemSourceChain } from "./op-stack-chain.js";
@@ -43,6 +56,55 @@ export function createViemBridgeAdapter(
 
   async function receipt(hash: Hash) {
     return l2Client.getTransactionReceipt({ hash });
+  }
+
+  async function depositStatus(hash: Hash): Promise<DepositStatusSnapshot> {
+    try {
+      const l1Receipt = await l1Client.getTransactionReceipt({ hash });
+      if (l1Receipt.status === "reverted") {
+        return {
+          l1BlockNumber: l1Receipt.blockNumber,
+          status: "failed",
+          deposits: [],
+        };
+      }
+      const l2TransactionHashes = getL2TransactionHashes({ logs: l1Receipt.logs });
+      if (l2TransactionHashes.length === 0) {
+        throw bridgeError(
+          "BRIDGE_DEPOSIT_NOT_FOUND",
+          `No portal deposits were found in ${hash}`,
+          EXIT_CODES.usage,
+        );
+      }
+      const deposits = await Promise.all(
+        l2TransactionHashes.map(async (l2TransactionHash) => {
+          let status: DepositL2Status;
+          try {
+            status = (await l2Client.getTransactionReceipt({ hash: l2TransactionHash })).status;
+          } catch (error) {
+            if (!(error instanceof TransactionReceiptNotFoundError)) {
+              throw error;
+            }
+            status = "pending";
+          }
+          return { l2TransactionHash, status };
+        }),
+      );
+      return {
+        l1BlockNumber: l1Receipt.blockNumber,
+        status: deposits.some((deposit) => deposit.status === "reverted")
+          ? "failed"
+          : deposits.every((deposit) => deposit.status === "success")
+            ? "complete"
+            : "pending",
+        deposits,
+      };
+    } catch (error) {
+      if (error instanceof ApplicationError) {
+        throw error;
+      }
+      throw bridgeError("BRIDGE_DEPOSIT_STATUS_FAILED", describeError(error));
+    }
   }
 
   async function status(hash: Hash, logIndex: number): Promise<WithdrawalStatus> {
@@ -142,6 +204,7 @@ export function createViemBridgeAdapter(
   }
 
   return {
+    depositStatus,
     status,
     wait,
     async prove(hash, logIndex): Promise<Hash> {

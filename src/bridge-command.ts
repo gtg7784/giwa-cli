@@ -10,7 +10,20 @@ export type WithdrawalStatus =
   | "ready-to-finalize"
   | "finalized";
 
+export type DepositL2Status = "pending" | "success" | "reverted";
+export type DepositStatus = "pending" | "complete" | "failed";
+
+export interface DepositStatusSnapshot {
+  readonly l1BlockNumber: bigint;
+  readonly status: DepositStatus;
+  readonly deposits: readonly {
+    readonly l2TransactionHash: Hash;
+    readonly status: DepositL2Status;
+  }[];
+}
+
 export interface BridgeAdapter {
+  depositStatus(hash: Hash): Promise<DepositStatusSnapshot>;
   status(hash: Hash, logIndex: number): Promise<WithdrawalStatus>;
   wait(hash: Hash, logIndex: number, target: BridgeWaitTarget): Promise<WithdrawalStatus>;
   prove(hash: Hash, logIndex: number): Promise<Hash>;
@@ -18,6 +31,7 @@ export interface BridgeAdapter {
 }
 
 export type BridgeRequest =
+  | { readonly kind: "deposit-status"; readonly hash: Hash }
   | { readonly kind: "status"; readonly hash: Hash; readonly logIndex: number }
   | {
       readonly kind: "wait";
@@ -29,6 +43,16 @@ export type BridgeRequest =
   | { readonly kind: "finalize"; readonly hash: Hash; readonly logIndex: number };
 
 export type BridgeResult =
+  | {
+      readonly kind: "deposit-status";
+      readonly l1TransactionHash: Hash;
+      readonly l1BlockNumber: string;
+      readonly status: DepositStatus;
+      readonly deposits: readonly {
+        readonly l2TransactionHash: Hash;
+        readonly status: DepositL2Status;
+      }[];
+    }
   | {
       readonly kind: "status" | "wait";
       readonly withdrawalHash: Hash;
@@ -45,6 +69,16 @@ export async function executeBridgeRequest(
   request: BridgeRequest,
 ): Promise<BridgeResult> {
   switch (request.kind) {
+    case "deposit-status": {
+      const snapshot = await adapter.depositStatus(request.hash);
+      return {
+        kind: request.kind,
+        l1TransactionHash: request.hash,
+        l1BlockNumber: snapshot.l1BlockNumber.toString(),
+        status: snapshot.status,
+        deposits: snapshot.deposits,
+      };
+    }
     case "status":
       return {
         kind: request.kind,

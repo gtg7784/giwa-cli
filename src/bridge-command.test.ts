@@ -10,9 +10,20 @@ import {
 const withdrawalHash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const proveHash = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const finalizeHash = "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+const depositHash = "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+const l2DepositHash = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
 class FakeBridgeAdapter implements BridgeAdapter {
   readonly calls: string[] = [];
+
+  async depositStatus(hash: Hash) {
+    this.calls.push(`deposit-status:${hash}`);
+    return {
+      l1BlockNumber: 123n,
+      status: "complete" as const,
+      deposits: [{ l2TransactionHash: l2DepositHash, status: "success" as const }],
+    };
+  }
 
   async status(hash: Hash, logIndex: number): Promise<WithdrawalStatus> {
     this.calls.push(`status:${hash}:${logIndex}`);
@@ -36,6 +47,27 @@ class FakeBridgeAdapter implements BridgeAdapter {
 }
 
 describe("bridge lifecycle request execution", () => {
+  it("reports every L2 transaction derived from an L1 deposit", async () => {
+    // given: an L1 transaction containing a confirmed portal deposit
+    const adapter = new FakeBridgeAdapter();
+
+    // when: the deposit lifecycle is inspected
+    const result = await executeBridgeRequest(adapter, {
+      kind: "deposit-status",
+      hash: depositHash,
+    });
+
+    // then: the L1 inclusion and derived L2 execution are reported
+    expect(result).toEqual({
+      kind: "deposit-status",
+      l1TransactionHash: depositHash,
+      l1BlockNumber: "123",
+      status: "complete",
+      deposits: [{ l2TransactionHash: l2DepositHash, status: "success" }],
+    });
+    expect(adapter.calls).toEqual([`deposit-status:${depositHash}`]);
+  });
+
   it("reports the withdrawal status for a selected log", async () => {
     // given: a withdrawal with multiple possible receipt logs
     const adapter = new FakeBridgeAdapter();
