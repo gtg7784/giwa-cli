@@ -100,4 +100,27 @@ describe("giwa CLI", () => {
     expect(result.stderr).toBe("");
     expect(result.exitCode).toBe(0);
   });
+
+  it("advertises L1 deposit status inspection", async () => {
+    // given: the bridge command is available
+    // when: bridge help is requested
+    const result = await runCLI("bridge", "--help");
+
+    // then: the deposit-status command is discoverable
+    expect(result.stdout).toContain("deposit-status [options] <l1-transaction-hash>");
+    expect(result.exitCode).toBe(0);
+  });
+
+  it("rejects a malformed L1 deposit transaction hash", async () => {
+    // given: structured output is requested
+    // when: deposit status receives a malformed transaction hash
+    const result = await runCLI("--json", "bridge", "deposit-status", "not-a-hash");
+
+    // then: input validation fails without contacting a network
+    const payload = JSON.parse(result.stderr);
+    expect(payload.ok).toBe(false);
+    expect(payload.error.code).toBe("INVALID_INPUT");
+    expect(result.stdout).toBe("");
+    expect(result.exitCode).toBe(2);
+  });
 });

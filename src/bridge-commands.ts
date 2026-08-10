@@ -46,6 +46,16 @@ function createAdapter(
 
 function formatBridgeResult(result: BridgeResult): string {
   switch (result.kind) {
+    case "deposit-status":
+      return [
+        `L1 transaction: ${result.l1TransactionHash}`,
+        `L1 block:       ${result.l1BlockNumber}`,
+        `Status:         ${result.status}`,
+        "L2 deposits:",
+        ...(result.deposits.length === 0
+          ? ["  none"]
+          : result.deposits.map((deposit) => `  ${deposit.l2TransactionHash}  ${deposit.status}`)),
+      ].join("\n");
     case "status":
     case "wait":
       return [`Withdrawal: ${result.withdrawalHash}`, `Status:     ${result.status}`].join("\n");
@@ -84,8 +94,25 @@ function parseBaseRequest(
 export function registerBridgeCommand(program: Command, context: NetworkCommandContext): void {
   const bridgeCommand = program
     .command("bridge")
-    .description("Manage OP Stack withdrawal lifecycle")
+    .description("Inspect OP Stack deposits and manage withdrawals")
     .action(() => bridgeCommand.outputHelp());
+
+  bridgeCommand
+    .command("deposit-status <l1-transaction-hash>")
+    .description("Inspect L2 execution derived from an L1 deposit")
+    .option("--network <alias>", "L2 network alias")
+    .allowExcessArguments(false)
+    .action(async (rawHash: string, options: BridgeOptions) => {
+      const request: BridgeRequest = {
+        kind: "deposit-status",
+        hash: HashSchema.parse(rawHash),
+      };
+      const result = await executeBridgeRequest(
+        createAdapter(program, context, options.network),
+        request,
+      );
+      writeResult(program, context, result);
+    });
 
   for (const kind of ["status", "prove", "finalize"] as const) {
     bridgeCommand
