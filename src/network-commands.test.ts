@@ -12,6 +12,7 @@ const NetworkItemSchema = z.object({
   active: z.boolean(),
   portal: z.string().optional(),
   l1StandardBridge: z.string().optional(),
+  disputeGameFactory: z.string().optional(),
 });
 
 const ListPayloadSchema = z.object({
@@ -94,6 +95,7 @@ describe("giwa network read commands", () => {
         explorerUrl: "https://sepolia-explorer.giwa.io",
         portal: "0x956962C34687A954e611A83619ABaA37Ce6bC78A",
         l1StandardBridge: "0x77b2ffc0F57598cAe1DB76cb398059cF5d10A7E7",
+        disputeGameFactory: "0x37347caB2afaa49B776372279143D71ad1f354F6",
         active: true,
       }),
     );

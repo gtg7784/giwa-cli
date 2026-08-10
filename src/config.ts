@@ -39,6 +39,7 @@ const ConfigNetworkSchema = z.object({
   explorerUrl: HttpUrlSchema,
   portal: AddressSchema.optional(),
   l1StandardBridge: AddressSchema.optional(),
+  disputeGameFactory: AddressSchema.optional(),
   sourceId: z.number().int().positive().optional(),
 });
 

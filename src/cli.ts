@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { Command, CommanderError } from "commander";
+import { registerBridgeCommand } from "./bridge-commands.js";
 import { registerCreateCommand } from "./create-commands.js";
 import { registerDoctorCommand } from "./doctor-command.js";
 import { ApplicationError, EXIT_CODES, toApplicationError } from "./errors.js";
@@ -10,6 +11,7 @@ import { type CommandIO, registerNetworkCommand } from "./network-commands.js";
 import { formatError, formatSuccess, writeOutput } from "./output.js";
 import { createRegistry } from "./registry.js";
 import type { Registry } from "./registry.js";
+import { registerTxFeeCommands } from "./tx-fee-commands.js";
 
 const version = "0.1.0";
 
@@ -57,6 +59,8 @@ export async function runCLI(
     registerInitCommand(program, { io, getRegistry });
     registerDoctorCommand(program, { io, getRegistry });
     registerCreateCommand(program, { io, getRegistry });
+    registerBridgeCommand(program, { io, getRegistry });
+    registerTxFeeCommands(program, { io, getRegistry });
     program.action(() => {
       const options = parseGlobalOptions(program.opts());
       if (argv.slice(2).length === 0) {

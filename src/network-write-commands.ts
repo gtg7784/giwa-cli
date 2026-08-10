@@ -16,6 +16,7 @@ const AddNetworkOptionsSchema = z.object({
   currencyDecimals: z.coerce.number().int().min(0).max(255).default(18),
   portal: z.string().optional(),
   l1StandardBridge: z.string().optional(),
+  disputeGameFactory: z.string().optional(),
   sourceId: z.coerce.number().int().positive().optional(),
 });
 
@@ -36,6 +37,9 @@ function createNetwork(alias: string, input: unknown): Network {
     ...(options.portal !== undefined && { portal: options.portal }),
     ...(options.l1StandardBridge !== undefined && {
       l1StandardBridge: options.l1StandardBridge,
+    }),
+    ...(options.disputeGameFactory !== undefined && {
+      disputeGameFactory: options.disputeGameFactory,
     }),
     ...(options.sourceId !== undefined && { sourceId: options.sourceId }),
   };
@@ -65,6 +69,7 @@ export function registerNetworkWriteCommands(
     .option("--currency-decimals <count>", "native currency decimals", "18")
     .option("--portal <address>", "OP portal address")
     .option("--l1-standard-bridge <address>", "L1 standard bridge address")
+    .option("--dispute-game-factory <address>", "OP dispute game factory address")
     .option("--source-id <id>", "source chain ID")
     .allowExcessArguments(false)
     .action((alias: string, rawOptions: unknown) => {

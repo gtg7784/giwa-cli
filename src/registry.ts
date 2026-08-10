@@ -23,6 +23,9 @@ function configNetworkToNetwork(network: ConfigNetwork): Network {
     ...(network.l1StandardBridge !== undefined && {
       l1StandardBridge: network.l1StandardBridge,
     }),
+    ...(network.disputeGameFactory !== undefined && {
+      disputeGameFactory: network.disputeGameFactory,
+    }),
     ...(network.sourceId !== undefined && { sourceId: network.sourceId }),
   };
 }
